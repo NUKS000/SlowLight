@@ -1,51 +1,33 @@
-# SlowLight Roadmap
+# SlowLight roadmap
 
-This roadmap is intentionally short. SlowLight should stay focused.
+## Now — public source release
 
-## Now — Public foundation
+- [x] Publish Android source code
+- [x] Document reproducible build/test steps
+- [x] Document Android 8.0 minimum version, tested baseline, and permission use
+- [x] Replace the circular cue with a full-height expanding centre line
+- [x] Use a true-black active-session background for OLED-friendly inactive space
+- [x] Add adaptive rear-torch mode with variable-strength detection and an on/off fallback
+- [x] Document research sources and a non-medical claim boundary
 
-- [x] Create public repository
-- [x] Publish project intent and design principles
-- [x] Add open-source licence
-- [x] Add contribution and security guidance
-- [ ] Publish Android source code
-- [ ] Document reproducible build steps
-- [ ] Add screenshots / short demo
-- [ ] Document minimum Android version and tested devices
-- [ ] Publish first tagged release
+## Next — device validation
 
-## Next — Make the prototype solid
-
-Once the source is public:
-
-- [ ] verify behaviour across multiple Android screen sizes;
-- [ ] review pause/resume lifecycle behaviour;
-- [ ] test brightness handling;
-- [ ] test long-session stability;
-- [ ] add lightweight automated tests where they provide real value;
-- [ ] complete an accessibility pass;
-- [ ] keep permissions to the minimum required.
+- [ ] test screen mode on OLED and LCD devices in a dark room
+- [ ] test rear torch on several Android manufacturers and Android versions
+- [ ] test camera-permission denial/revocation and camera contention
+- [ ] capture screenshots or a short demo
+- [ ] produce a signed, reproducible public release APK
+- [ ] complete an accessibility review
 
 ## Possible later improvements
 
 Only if they improve the core experience without adding clutter:
 
-- user-adjustable session duration;
-- optional pace presets;
-- subtle visual themes suitable for low-light use;
-- improved accessibility controls;
-- optional haptic guidance;
-- better device/orientation handling.
+- user-adjustable session duration
+- additional gentle pace presets
+- accessibility improvements
+- a release signing workflow
 
 ## Explicit non-goals
 
-SlowLight is not currently intended to become:
-
-- a social network;
-- a gamified streak app;
-- a cloud account platform;
-- an advertising product;
-- a medical device;
-- a diagnostic or treatment tool.
-
-The product should remain understandable in one sentence.
+SlowLight is not a social network, gamified streak app, cloud account platform, advertising product, medical device, diagnostic tool, or treatment.

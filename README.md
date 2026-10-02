@@ -6,124 +6,80 @@
 
 <p align="center">
   <strong>A quiet, offline visual breathing pacer for Android.</strong><br />
-  No account. No audio. No cloud dependency. Just a simple visual rhythm that gradually slows.
+  A central line opens into light, then returns to true black as the pace gradually slows.
 </p>
 
 <p align="center">
   <a href="https://github.com/NUKS000/SlowLight/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-3DDC84.svg">
-  <img alt="Status" src="https://img.shields.io/badge/status-working%20prototype-6f42c1.svg">
+  <img alt="Minimum Android" src="https://img.shields.io/badge/minimum%20Android-8.0%20(API%2026)-green.svg">
 </p>
-
----
 
 ## What it does
 
-SlowLight is a deliberately minimal Android app for guided breathing and relaxation.
+SlowLight guides paced breathing with a minimal visual cue. In screen mode, a narrow **vertical white line** at the centre of the display expands symmetrically until the screen is white, then retracts back to black. The rhythm starts at about **11 breaths/minute** and ramps linearly to **6 breaths/minute** over the first two minutes.
 
-The working prototype uses a full-screen expanding and contracting visual pacer that progressively slows from roughly **11 breaths per minute to 6 breaths per minute**.
+It includes:
 
-Current prototype behaviour includes:
+- 8- and 20-minute sessions
+- screen mode with live per-session brightness control
+- a true `#000000` active-session background, intended to let OLED pixels turn off outside the cue
+- rear-torch mode for face-down use
+- adaptive rear-torch output: Android 13+ phones that report multiple torch levels breathe through that range; other supported phones use an on/off rhythm
+- pause, resume, repeat, and automatic pause when backgrounded
+- local-only settings; no accounts, analytics, ads, or internet permission
 
-- 8-minute and 20-minute sessions
-- progressive breathing pace
-- full-screen visual guidance
-- brightness control
-- pause, resume and stop
-- offline operation
-- no accounts
-- no analytics
-- no advertising
-- no network dependency for the core experience
+## Screen mode and OLED black
 
-The prototype has been built, installed and used on a **Samsung Galaxy S24 Ultra**.
+The active screen is black (`#000000`), immersive, and has navigation/status-bar contrast enforcement disabled where Android supports it. That lets OLED screens render the inactive area with pixels off rather than a near-black grey. LCD screens will still display their normal black level.
 
-## Why I built it
+## Rear-torch mode
 
-The idea came from a simple question:
+Choose **Rear torch** in Settings, point the rear flash safely away from eyes, and place the phone face-down before starting. SlowLight requests Android's **Camera** permission only to operate the torch; it does not take photos, record video, access the network, or store camera data.
 
-> If the useful part of a breathing device is a gradually slowing visual rhythm, why does it need another piece of hardware?
+Torch brightness is hardware-dependent:
 
-SlowLight strips the concept down to the behaviour that matters: a calm, predictable visual cue with as little interface friction as possible.
+- **Variable-capable devices:** SlowLight detects the Android 13 (API 33) `FLASH_INFO_STRENGTH_MAXIMUM_LEVEL` capability and uses `turnOnTorchWithStrengthLevel` to follow the breath rhythm.
+- **Other torch-capable devices:** Android exposes only torch on/off, so SlowLight uses an on/off rhythm instead.
+- **No torch detected:** torch mode will not start.
 
-This is not positioned as a medical device or treatment. It is a small software product focused on guided breathing for relaxation.
+Do not use torch mode while driving or walking, and do not use a flashing light if it may trigger a health condition.
 
-## Project status
+## Research and health boundary
 
-**Working prototype. Source publication in progress.**
+The pacing choice is research-informed, not a treatment claim. Slow, controlled breathing has been studied in relation to autonomic and psychological measures, while direct sleep evidence is still developing. SlowLight itself has not been clinically tested and is **not a medical device**, diagnosis, treatment, or substitute for professional care.
 
-The Android source code will be added to this repository once it has been cleaned up for public release.
+See [docs/RESEARCH.md](docs/RESEARCH.md) for the evidence summary, citations, and the exact scope of claims this project does *not* make.
 
-Until then, this repository documents:
+## Build from source
 
-- the product intent
-- the current behaviour
-- the design constraints
-- the open-source direction
-- the roadmap
+### Requirements
 
-When the source lands, this README will be updated with build instructions, architecture notes and release APK details.
+- Android Studio or JDK 17
+- Android SDK Platform 35 / Build Tools 35
+- An Android device or emulator running Android 8.0 (API 26) or later
 
-## Design principles
-
-SlowLight is intentionally opinionated:
-
-1. **Offline first** — the core session should work without connectivity.
-2. **Low distraction** — no feeds, streaks, gamification or noisy dashboards.
-3. **Immediate use** — open the app and start.
-4. **No unnecessary data collection** — the current concept does not need an account or analytics.
-5. **Clear product boundary** — relaxation guidance, not medical claims.
-6. **Simple over clever** — features only earn their place if they improve the breathing session.
-
-## Planned repository structure
-
-Once the Android source is published, the project will be organised so it is easy to understand and fork.
-
-```text
-SlowLight/
-├── app/                  # Android application source
-├── docs/                 # product and architecture notes
-├── assets/               # repository artwork/screenshots
-├── .github/              # contribution templates
-├── README.md
-├── CONTRIBUTING.md
-├── ROADMAP.md
-└── LICENSE
+```bash
+git clone https://github.com/NUKS000/SlowLight.git
+cd SlowLight
+./gradlew testDebugUnitTest assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Roadmap
+The package name is `com.nuks.slowlight`.
 
-See [ROADMAP.md](ROADMAP.md).
+## Verification
 
-The immediate priority is publishing the working Android source in a clean, reproducible state.
+Version **1.1.0** was built with Gradle 8.10.2, Android SDK 35, JDK 17, and its timing unit tests. It was initially tested on a Samsung Galaxy S24 Ultra; the new torch capability path requires device-specific testing because Android camera hardware varies.
+
+## Privacy
+
+SlowLight stores its session settings locally through Android DataStore. It has no internet permission, no account system, no analytics SDK, no advertising, and no cloud service. Camera permission is requested only if you choose rear-torch mode.
 
 ## Contributing
 
-Contributions will be welcome once the source is available.
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
-
-For security issues, see [SECURITY.md](SECURITY.md).
+Contributions are welcome when they preserve the app's offline-first, low-distraction design. Read [CONTRIBUTING.md](CONTRIBUTING.md), [docs/PROJECT-NOTES.md](docs/PROJECT-NOTES.md), and [SECURITY.md](SECURITY.md) first.
 
 ## Licence
 
 SlowLight is released under the [MIT License](LICENSE).
-
-That means you can use, modify, fork and redistribute the code, subject to the licence terms.
-
-## About the builder
-
-SlowLight was designed and built by **Josh Bohan** as a small end-to-end product exercise: identify a real problem, reduce it to the useful behaviour, build the software, put it on a physical device, and iterate from actual use.
-
-I work across project delivery, software-enabled products and practical digital tools.
-
-- [GitHub — NUKS000](https://github.com/NUKS000)
-- [BOBOX Studio](https://www.boboxstudio.co.nz/)
-
-BOBOX is where I publish and build websites, apps and useful digital products.
-
----
-
-### Current milestone
-
-**Prototype proven on-device → public repository established → source release next.**

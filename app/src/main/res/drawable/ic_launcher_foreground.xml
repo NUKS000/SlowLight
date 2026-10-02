@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Smaller user-requested icon: more black field with blue circle, darker centre and brighter rim. -->
+    <path
+        android:fillColor="#2F8CFF"
+        android:pathData="M54,27a27,27 0,1 0,0.1 0" />
+    <path
+        android:fillColor="#267EEB"
+        android:pathData="M54,31a23,23 0,1 0,0.1 0" />
+    <path
+        android:fillColor="#1B63C8"
+        android:pathData="M54,36a18,18 0,1 0,0.1 0" />
+    <path
+        android:fillColor="#124AA4"
+        android:pathData="M54,42a12,12 0,1 0,0.1 0" />
+    <path
+        android:fillColor="#0A2D68"
+        android:pathData="M54,48a6,6 0,1 0,0.1 0" />
+</vector>
