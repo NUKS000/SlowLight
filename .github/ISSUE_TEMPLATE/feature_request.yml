@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a focused improvement
+title: "[Idea]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        SlowLight is intentionally minimal. Strong feature requests explain what user problem is being solved.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed idea
+    validations:
+      required: true
+  - type: textarea
+    id: simplicity
+    attributes:
+      label: How does this preserve the project's simplicity?
