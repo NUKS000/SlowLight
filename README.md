@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NUKS000/SlowLight/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="https://github.com/NUKS000/SlowLight/blob/main/LICENSE"><img alt="PolyForm Noncommercial License" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg"></a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-Android-3DDC84.svg">
   <img alt="Minimum Android" src="https://img.shields.io/badge/minimum%20Android-8.0%20(API%2026)-green.svg">
 </p>
