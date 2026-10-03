@@ -82,4 +82,8 @@ Contributions are welcome when they preserve the app's offline-first, low-distra
 
 ## Licence
 
-SlowLight is released under the [MIT License](LICENSE).
+SlowLight is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+You may use, study, modify, and redistribute SlowLight for permitted non-commercial purposes. **Commercial use is not permitted without a separate written licence from Josh Bohan.** This includes selling the app, charging for access to it, incorporating it into a paid product or service, or otherwise using it with an anticipated commercial application.
+
+If you want to use SlowLight commercially, contact the copyright holder to discuss a separate commercial licence.
