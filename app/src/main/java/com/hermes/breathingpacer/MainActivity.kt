@@ -16,7 +16,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,7 +56,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -96,6 +101,12 @@ class MainActivity : ComponentActivity() {
 
 enum class SessionDuration(val minutes: Int) { EIGHT(8), TWENTY(20) }
 enum class CueMode(val label: String) { SCREEN("Screen"), TORCH("Rear torch") }
+enum class PulseColor(val label: String, val color: Color) {
+    WHITE("White", Color.White),
+    RED("Red", Color(0xFFFF4D4D)),
+    GREEN("Green", Color(0xFF55E889)),
+    BLUE("Blue", Color(0xFF62A8FF)),
+}
 enum class BreathingPhase { INHALE, EXHALE }
 enum class SessionStatus { IDLE, RUNNING, PAUSED, COMPLETE }
 
@@ -149,35 +160,43 @@ object BreathingEngine {
 data class PreferencesState(
     val duration: SessionDuration = SessionDuration.EIGHT,
     val cueMode: CueMode = CueMode.SCREEN,
+    val pulseColor: PulseColor = PulseColor.WHITE,
     val screenBrightness: Float = DEFAULT_SCREEN_BRIGHTNESS,
     val torchStrength: Float = 0.50f,
     val darkTheme: Boolean = true,
     val reducedMotion: Boolean = false,
+    val showSessionGuide: Boolean = true,
 )
 
 class PreferencesRepository(private val context: Context) {
     private val durationKey = intPreferencesKey("duration_minutes")
     private val modeKey = intPreferencesKey("cue_mode")
+    private val pulseColorKey = intPreferencesKey("pulse_color")
     private val screenBrightnessKey = floatPreferencesKey("screen_brightness")
     private val torchStrengthKey = floatPreferencesKey("torch_strength")
     private val darkKey = booleanPreferencesKey("dark_theme")
     private val reducedMotionKey = booleanPreferencesKey("reduced_motion")
+    private val showSessionGuideKey = booleanPreferencesKey("show_session_guide")
     val preferences: Flow<PreferencesState> = context.dataStore.data.map { p ->
         PreferencesState(
             duration = SessionDuration.entries.firstOrNull { it.minutes == (p[durationKey] ?: 8) } ?: SessionDuration.EIGHT,
             cueMode = CueMode.entries.getOrElse(p[modeKey] ?: CueMode.SCREEN.ordinal) { CueMode.SCREEN },
+            pulseColor = PulseColor.entries.getOrElse(p[pulseColorKey] ?: PulseColor.WHITE.ordinal) { PulseColor.WHITE },
             screenBrightness = (p[screenBrightnessKey] ?: DEFAULT_SCREEN_BRIGHTNESS).coerceIn(MIN_SCREEN_BRIGHTNESS, MAX_BRIGHTNESS),
             torchStrength = (p[torchStrengthKey] ?: 0.50f).coerceIn(0.05f, 1.0f),
             darkTheme = p[darkKey] ?: true,
             reducedMotion = p[reducedMotionKey] ?: false,
+            showSessionGuide = p[showSessionGuideKey] ?: true,
         )
     }
     suspend fun setDuration(value: SessionDuration) = context.dataStore.edit { it[durationKey] = value.minutes }
     suspend fun setCueMode(value: CueMode) = context.dataStore.edit { it[modeKey] = value.ordinal }
+    suspend fun setPulseColor(value: PulseColor) = context.dataStore.edit { it[pulseColorKey] = value.ordinal }
     suspend fun setScreenBrightness(value: Float) = context.dataStore.edit { it[screenBrightnessKey] = value.coerceIn(MIN_SCREEN_BRIGHTNESS, MAX_BRIGHTNESS) }
     suspend fun setTorchStrength(value: Float) = context.dataStore.edit { it[torchStrengthKey] = value.coerceIn(0.05f, 1.0f) }
     suspend fun setDarkTheme(value: Boolean) = context.dataStore.edit { it[darkKey] = value }
     suspend fun setReducedMotion(value: Boolean) = context.dataStore.edit { it[reducedMotionKey] = value }
+    suspend fun setShowSessionGuide(value: Boolean) = context.dataStore.edit { it[showSessionGuideKey] = value }
 }
 
 data class AppState(
@@ -197,6 +216,12 @@ class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
     init { kotlinx.coroutines.MainScope().launch { repo.preferences.collect { prefs -> _state.update { it.copy(prefs = prefs) } } } }
     fun show(route: String) = _state.update { it.copy(route = route, controlsVisible = true) }
     fun start(duration: SessionDuration = _state.value.prefs.duration) {
+        val prefs = _state.value.prefs.copy(duration = duration)
+        if (prefs.showSessionGuide) {
+            _state.update { it.copy(route = "intro", status = SessionStatus.IDLE, prefs = prefs, controlsVisible = true) }
+        } else beginSession(duration)
+    }
+    fun beginSession(duration: SessionDuration = _state.value.prefs.duration) {
         accumulatedMs = 0
         startedAtMs = SystemClock.elapsedRealtime()
         val prefs = _state.value.prefs.copy(duration = duration)
@@ -215,10 +240,12 @@ class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
     fun toggleControls() = _state.update { it.copy(controlsVisible = !it.controlsVisible) }
     suspend fun setDuration(value: SessionDuration) = repo.setDuration(value)
     suspend fun setCueMode(value: CueMode) = repo.setCueMode(value)
+    suspend fun setPulseColor(value: PulseColor) = repo.setPulseColor(value)
     suspend fun setScreenBrightness(value: Float) = repo.setScreenBrightness(value)
     suspend fun setTorchStrength(value: Float) = repo.setTorchStrength(value)
     suspend fun setDarkTheme(value: Boolean) = repo.setDarkTheme(value)
     suspend fun setReducedMotion(value: Boolean) = repo.setReducedMotion(value)
+    suspend fun setShowSessionGuide(value: Boolean) = repo.setShowSessionGuide(value)
     private fun configFor(prefs: PreferencesState) = BreathingConfiguration(sessionDurationSeconds = prefs.duration.minutes * 60.0)
 }
 
@@ -268,7 +295,7 @@ private class TorchController(private val cameraManager: CameraManager, private 
     ApplySystemBars(dark, state.route == "session")
     MaterialTheme(colorScheme = if (dark) darkScheme() else lightScheme()) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            when (state.route) { "settings" -> SettingsScreen(state, vm); "session" -> SessionScreen(state, vm); else -> HomeScreen(state, vm) }
+            when (state.route) { "settings" -> SettingsScreen(state, vm); "intro" -> SessionIntroScreen(state, vm); "session" -> SessionScreen(state, vm); else -> HomeScreen(state, vm) }
         }
     }
 }
@@ -292,7 +319,7 @@ private class TorchController(private val cameraManager: CameraManager, private 
         Column(Modifier.weight(1f)) {
             Text("SlowLight", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(10.dp))
-            Text("A quiet visual rhythm that expands from a central line and gradually slows for pre-sleep breathing.", color = MaterialTheme.colorScheme.secondary)
+            Text("A quiet visual rhythm that rises from the foot of the screen to guide pre-sleep breathing.", color = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.height(28.dp))
             DurationChooser(state.prefs.duration) { scope.launch { vm.setDuration(it) } }
             Spacer(Modifier.height(18.dp))
@@ -322,25 +349,32 @@ private class TorchController(private val cameraManager: CameraManager, private 
     }
     DisposableEffect(controller) { onDispose { controller.off() } }
     Box(Modifier.fillMaxSize().background(Color.Black).clickable { vm.toggleControls() }.semantics { contentDescription = "SlowLight breathing session. ${state.snapshot.phase.name.lowercase()}." }, contentAlignment = Alignment.Center) {
-        if (state.prefs.cueMode == CueMode.SCREEN) ExpandingLineCue(state.snapshot.cueScale.toFloat())
-        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.TopCenter).padding(top = 38.dp)) { Text(if (state.status == SessionStatus.COMPLETE) "Complete" else state.snapshot.phase.name.lowercase().replaceFirstChar { it.uppercase() }, color = Color.White) }
-        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.BottomCenter).padding(22.dp)) { SessionControls(state, vm, capability) }
+        if (state.prefs.cueMode == CueMode.SCREEN) ExpandingVerticalCue(state.snapshot.cueScale.toFloat(), state.prefs.pulseColor.color)
+        val labelColor = if (state.snapshot.cueScale > 0.45 && state.prefs.pulseColor != PulseColor.BLUE) Color.Black else Color.White
+        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.TopCenter).padding(top = 38.dp)) { Text(if (state.status == SessionStatus.COMPLETE) "Complete" else state.snapshot.phase.name.lowercase().replaceFirstChar { it.uppercase() }, color = labelColor, fontWeight = FontWeight.SemiBold) }
+        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.BottomCenter).padding(14.dp)) { SessionControls(state, vm, capability) }
     }
 }
 
-@Composable fun ExpandingLineCue(scale: Float) {
-    // OLED-black background is exact #000000; this white vertical line expands symmetrically to fill the display.
-    Box(Modifier.fillMaxHeight().fillMaxWidth(scale.coerceIn(0f, 1f)).background(Color.White))
+@Composable fun ExpandingVerticalCue(scale: Float, color: Color) {
+    // The light rises from the bottom edge and its intensity follows the breathing pulse.
+    Box(Modifier.fillMaxSize()) {
+        val pulseAlpha = (0.10f + 0.90f * scale.coerceIn(0f, 1f))
+        Box(Modifier.fillMaxWidth().fillMaxHeight(scale.coerceIn(0f, 1f)).background(color.copy(alpha = pulseAlpha)).align(Alignment.BottomCenter))
+    }
 }
 
 @Composable private fun SessionControls(state: AppState, vm: SessionViewModel, capability: TorchCapability?) {
     val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Surface(color = Color.Black.copy(alpha = 0.78f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(formatRemaining(state.snapshot.remainingSeconds), color = Color(0xFFBDBDBD))
         Spacer(Modifier.height(12.dp))
         if (state.prefs.cueMode == CueMode.SCREEN) {
-            Text("Screen brightness: ${percent(state.prefs.screenBrightness)}", color = Color(0xFFBDBDBD))
+            Text("Maximum screen brightness: ${percent(state.prefs.screenBrightness)}", color = Color(0xFFBDBDBD))
             Slider(value = state.prefs.screenBrightness, onValueChange = { scope.launch { vm.setScreenBrightness(it) } }, valueRange = MIN_SCREEN_BRIGHTNESS..MAX_BRIGHTNESS, modifier = Modifier.fillMaxWidth())
+            Text("Pulse color: ${state.prefs.pulseColor.label}", color = Color(0xFFBDBDBD))
+            PulseColor.entries.forEach { color -> ChoiceRow(color.label, state.prefs.pulseColor == color) { scope.launch { vm.setPulseColor(color) } } }
         } else {
             val variable = capability?.supportsVariableStrength == true
             Text(if (variable) "Torch maximum: ${percent(state.prefs.torchStrength)}" else "Torch output: this phone only exposes on/off control", color = Color(0xFFBDBDBD))
@@ -353,6 +387,42 @@ private class TorchController(private val cameraManager: CameraManager, private 
             if (state.status == SessionStatus.COMPLETE) Button(onClick = { vm.start(state.prefs.duration) }) { Text("Repeat") }
             OutlinedButton(onClick = vm::exitSession) { Text("Exit") }
         }
+    }
+    }
+}
+
+@Composable
+fun SessionIntroScreen(state: AppState, vm: SessionViewModel) {
+    val scope = rememberCoroutineScope()
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 18.dp)) {
+        Text("Set up your space", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(6.dp))
+        Text("Choose a comfortable position before the light begins.", color = MaterialTheme.colorScheme.secondary)
+        Spacer(Modifier.height(10.dp))
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            SetupIllustration(phoneBesideBed = true)
+            Text("Place the phone beside the bed with the screen facing upward toward the ceiling. Keep it stable and out of reach while you relax.", color = MaterialTheme.colorScheme.onSurface)
+            SetupIllustration(phoneBesideBed = false)
+            Text("Lie comfortably in bed and watch the soft light on the ceiling. Follow the words and the rising/falling light without forcing your breath.", color = MaterialTheme.colorScheme.onSurface)
+        }
+        SwitchRow("Show this guide at the start", state.prefs.showSessionGuide) { scope.launch { vm.setShowSessionGuide(it) } }
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { vm.beginSession(state.prefs.duration) }, modifier = Modifier.fillMaxWidth()) { Text("Begin ${state.prefs.duration.minutes}-minute session") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = { vm.show("home") }, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+    }
+}
+
+@Composable
+fun SetupIllustration(phoneBesideBed: Boolean) {
+    val image = if (phoneBesideBed) R.drawable.setup_phone else R.drawable.setup_bed
+    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().height(240.dp)) {
+        Image(
+            painter = painterResource(image),
+            contentDescription = if (phoneBesideBed) "Phone on bedside table shining toward the ceiling" else "Person lying in bed watching the ceiling light",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)),
+        )
     }
 }
 
@@ -368,6 +438,8 @@ private class TorchController(private val cameraManager: CameraManager, private 
             Divider(Modifier.padding(vertical = 14.dp))
             Text("Light source", fontWeight = FontWeight.Medium)
             CueMode.entries.forEach { mode -> ChoiceRow(mode.label, state.prefs.cueMode == mode) { scope.launch { vm.setCueMode(mode) } } }
+            Text("Screen pulse color", fontWeight = FontWeight.Medium)
+            PulseColor.entries.forEach { color -> ChoiceRow(color.label, state.prefs.pulseColor == color) { scope.launch { vm.setPulseColor(color) } } }
             if (state.prefs.cueMode == CueMode.TORCH) {
                 Text(when {
                     capability == null -> "No rear torch was detected on this phone. SlowLight will not start torch mode."
@@ -380,6 +452,7 @@ private class TorchController(private val cameraManager: CameraManager, private 
             Divider(Modifier.padding(vertical = 14.dp))
             SwitchRow("Dark app theme", state.prefs.darkTheme) { scope.launch { vm.setDarkTheme(it) } }
             SwitchRow("Reduced motion", state.prefs.reducedMotion) { scope.launch { vm.setReducedMotion(it) } }
+            SwitchRow("Show setup illustration at session start", state.prefs.showSessionGuide) { scope.launch { vm.setShowSessionGuide(it) } }
             Divider(Modifier.padding(vertical = 14.dp))
             Text("Safety", fontWeight = FontWeight.Medium)
             Text("Breathe gently and comfortably. Do not try to breathe as deeply as possible. Stop if you feel dizzy, breathless or unwell. This is a relaxation tool, not a medical device or treatment. Discuss persistent sleep or breathing problems with an appropriate health professional.", color = MaterialTheme.colorScheme.secondary)

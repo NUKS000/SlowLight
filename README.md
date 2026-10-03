@@ -23,9 +23,11 @@ It includes:
 
 - 8- and 20-minute sessions
 - screen mode with live per-session brightness control
+- pulse-linked screen intensity with remembered white, red, green, and blue cue colors
 - a true `#000000` active-session background, intended to let OLED pixels turn off outside the cue
+- optional setup guidance with bedside-phone and ceiling-light illustrations
 - rear-torch mode for face-down use
-- adaptive rear-torch output: Android 13+ phones that report multiple torch levels breathe through that range; other supported phones use an on/off rhythm
+- adaptive rear-torch output: Android 13+ phones that report multiple torch levels breathe through those levels; other supported phones use an on/off rhythm
 - pause, resume, repeat, and automatic pause when backgrounded
 - local-only settings; no accounts, analytics, ads, or internet permission
 
@@ -70,7 +72,7 @@ The package name is `com.nuks.slowlight`.
 
 ## Verification
 
-Version **1.1.0** was built with Gradle 8.10.2, Android SDK 35, JDK 17, and its timing unit tests. It was initially tested on a Samsung Galaxy S24 Ultra; the new torch capability path requires device-specific testing because Android camera hardware varies.
+Version **1.3.0** was built with Gradle 8.10.2, Android SDK 35, JDK 17, and its timing unit tests. The debug APK is available under [`releases/SlowLight-v1.3.0-debug.apk`](releases/SlowLight-v1.3.0-debug.apk) and has SHA-256 `27c7209ab3271c1dac4f2f16fac72214b5c2a0a27bc2a6c2426629e9fc119f70`. It was initially tested on a Samsung Galaxy S24 Ultra; torch capability remains device-specific.
 
 ## Privacy
 
