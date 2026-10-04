@@ -29,9 +29,36 @@ class BreathingEngineTest {
         assertEquals(6.0, snap.exhaleDurationSeconds, 0.0001)
     }
 
+    @Test fun integratedCyclesAreContinuousAtRampBoundary() {
+        val justBefore = BreathingEngine.accumulatedCyclesAt(119.999, eightMinute)
+        val atBoundary = BreathingEngine.accumulatedCyclesAt(120.0, eightMinute)
+        val justAfter = BreathingEngine.accumulatedCyclesAt(120.001, eightMinute)
+        assertTrue(justBefore < atBoundary)
+        assertTrue(atBoundary < justAfter)
+        assertEquals(17.0, atBoundary, 0.0001)
+        assertEquals(0.001 * 6.0 / 60.0, justAfter - atBoundary, 0.00001)
+    }
+
+    @Test fun cueScaleDoesNotJumpAtRampBoundary() {
+        val before = BreathingEngine.snapshot(119.999, eightMinute).cueScale
+        val boundary = BreathingEngine.snapshot(120.0, eightMinute).cueScale
+        val after = BreathingEngine.snapshot(120.001, eightMinute).cueScale
+        assertEquals(0.0, boundary, 0.0001)
+        assertTrue(kotlin.math.abs(before - boundary) < 0.001)
+        assertTrue(kotlin.math.abs(after - boundary) < 0.001)
+    }
+
     @Test fun calculatesInhaleAndExhalePhasesAtTargetRate() {
         assertEquals(BreathingPhase.INHALE, BreathingEngine.snapshot(120.5, eightMinute).phase)
         assertEquals(BreathingPhase.EXHALE, BreathingEngine.snapshot(124.5, eightMinute).phase)
+    }
+
+    @Test fun targetRateHasFourSecondInhaleAndSixSecondExhaleAcrossCycles() {
+        assertEquals(BreathingPhase.INHALE, BreathingEngine.snapshot(130.0, eightMinute).phase)
+        assertEquals(BreathingPhase.EXHALE, BreathingEngine.snapshot(134.0, eightMinute).phase)
+        assertEquals(BreathingPhase.INHALE, BreathingEngine.snapshot(140.0, eightMinute).phase)
+        assertEquals(BreathingPhase.EXHALE, BreathingEngine.snapshot(144.0, eightMinute).phase)
+        assertEquals(BreathingPhase.INHALE, BreathingEngine.snapshot(150.0, eightMinute).phase)
     }
 
     @Test fun completesEightAndTwentyMinuteSessions() {
@@ -47,6 +74,16 @@ class BreathingEngineTest {
             BreathingEngine.snapshot(0.0, invalid)
             throw AssertionError("Expected invalid configuration to fail")
         } catch (_: IllegalArgumentException) { }
+    }
+
+    @Test fun savedPulseColourValuesRemainCompatibleAndNewDefaultIsWarmRed() {
+        assertEquals(PulseColor.WARM_RED, PreferencesState().pulseColor)
+        assertEquals(PulseColor.WHITE, PulseColor.fromStored(0))
+        assertEquals(PulseColor.WARM_RED, PulseColor.fromStored(1))
+        assertEquals(PulseColor.GREEN, PulseColor.fromStored(2))
+        assertEquals(PulseColor.BLUE, PulseColor.fromStored(3))
+        assertEquals(PulseColor.AMBER, PulseColor.fromStored(4))
+        assertEquals(PulseColor.WARM_RED, PulseColor.fromStored(99))
     }
 
     @Test fun pauseResumeTimingModelCanUseAccumulatedElapsedTime() {

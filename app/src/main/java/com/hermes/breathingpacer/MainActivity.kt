@@ -37,7 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
@@ -101,11 +101,17 @@ class MainActivity : ComponentActivity() {
 
 enum class SessionDuration(val minutes: Int) { EIGHT(8), TWENTY(20) }
 enum class CueMode(val label: String) { SCREEN("Screen"), TORCH("Rear torch") }
-enum class PulseColor(val label: String, val color: Color) {
-    WHITE("White", Color.White),
-    RED("Red", Color(0xFFFF4D4D)),
-    GREEN("Green", Color(0xFF55E889)),
-    BLUE("Blue", Color(0xFF62A8FF)),
+enum class PulseColor(val label: String, val color: Color, val storedValue: Int) {
+    WARM_RED("Warm red", Color(0xFFB24646), 1),
+    AMBER("Amber", Color(0xFFD08A3B), 4),
+    WHITE("White", Color.White, 0),
+    GREEN("Green", Color(0xFF55E889), 2),
+    BLUE("Blue", Color(0xFF62A8FF), 3),
+    ;
+
+    companion object {
+        fun fromStored(value: Int): PulseColor = entries.firstOrNull { it.storedValue == value } ?: WARM_RED
+    }
 }
 enum class BreathingPhase { INHALE, EXHALE }
 enum class SessionStatus { IDLE, RUNNING, PAUSED, COMPLETE }
@@ -147,12 +153,26 @@ object BreathingEngine {
         val cycle = 60.0 / bpm
         val inhale = cycle * config.inhaleRatio
         val exhale = cycle * config.exhaleRatio
-        val cyclePosition = elapsed % cycle
-        val phase = if (cyclePosition < inhale) BreathingPhase.INHALE else BreathingPhase.EXHALE
+        val completedCycles = accumulatedCyclesAt(elapsed, config)
+        val cycleFraction = completedCycles - kotlin.math.floor(completedCycles)
+        val cyclePosition = cycleFraction * cycle
+        val phase = if (cycleFraction < config.inhaleRatio - 1e-10) BreathingPhase.INHALE else BreathingPhase.EXHALE
         val rawProgress = if (phase == BreathingPhase.INHALE) cyclePosition / inhale else (cyclePosition - inhale) / exhale
         val breathingProgress = if (phase == BreathingPhase.INHALE) rawProgress else 1.0 - rawProgress
         val scale = smooth01(breathingProgress.coerceIn(0.0, 1.0))
         return BreathingSnapshot(elapsed, config.sessionDurationSeconds - elapsed, bpm, cycle, inhale, exhale, phase, rawProgress.coerceIn(0.0, 1.0), scale, elapsed >= config.sessionDurationSeconds)
+    }
+    fun accumulatedCyclesAt(elapsedSecondsInput: Double, config: BreathingConfiguration): Double {
+        config.validate()
+        val elapsed = elapsedSecondsInput.coerceAtLeast(0.0)
+        val ramp = config.rampDurationSeconds
+        val slopePerSecond = if (ramp == 0.0) 0.0 else (config.targetBpm - config.startBpm) / ramp
+        val cyclesDuringRamp = (config.startBpm * ramp + 0.5 * slopePerSecond * ramp * ramp) / 60.0
+        return if (ramp == 0.0 || elapsed >= ramp) {
+            cyclesDuringRamp + (elapsed - ramp).coerceAtLeast(0.0) * config.targetBpm / 60.0
+        } else {
+            (config.startBpm * elapsed + 0.5 * slopePerSecond * elapsed * elapsed) / 60.0
+        }
     }
     private fun smooth01(x: Double): Double = 0.5 - 0.5 * cos(PI * x)
 }
@@ -160,7 +180,7 @@ object BreathingEngine {
 data class PreferencesState(
     val duration: SessionDuration = SessionDuration.EIGHT,
     val cueMode: CueMode = CueMode.SCREEN,
-    val pulseColor: PulseColor = PulseColor.WHITE,
+    val pulseColor: PulseColor = PulseColor.WARM_RED,
     val screenBrightness: Float = DEFAULT_SCREEN_BRIGHTNESS,
     val torchStrength: Float = 0.50f,
     val darkTheme: Boolean = true,
@@ -181,7 +201,7 @@ class PreferencesRepository(private val context: Context) {
         PreferencesState(
             duration = SessionDuration.entries.firstOrNull { it.minutes == (p[durationKey] ?: 8) } ?: SessionDuration.EIGHT,
             cueMode = CueMode.entries.getOrElse(p[modeKey] ?: CueMode.SCREEN.ordinal) { CueMode.SCREEN },
-            pulseColor = PulseColor.entries.getOrElse(p[pulseColorKey] ?: PulseColor.WHITE.ordinal) { PulseColor.WHITE },
+            pulseColor = PulseColor.fromStored(p[pulseColorKey] ?: PulseColor.WARM_RED.storedValue),
             screenBrightness = (p[screenBrightnessKey] ?: DEFAULT_SCREEN_BRIGHTNESS).coerceIn(MIN_SCREEN_BRIGHTNESS, MAX_BRIGHTNESS),
             torchStrength = (p[torchStrengthKey] ?: 0.50f).coerceIn(0.05f, 1.0f),
             darkTheme = p[darkKey] ?: true,
@@ -191,7 +211,7 @@ class PreferencesRepository(private val context: Context) {
     }
     suspend fun setDuration(value: SessionDuration) = context.dataStore.edit { it[durationKey] = value.minutes }
     suspend fun setCueMode(value: CueMode) = context.dataStore.edit { it[modeKey] = value.ordinal }
-    suspend fun setPulseColor(value: PulseColor) = context.dataStore.edit { it[pulseColorKey] = value.ordinal }
+    suspend fun setPulseColor(value: PulseColor) = context.dataStore.edit { it[pulseColorKey] = value.storedValue }
     suspend fun setScreenBrightness(value: Float) = context.dataStore.edit { it[screenBrightnessKey] = value.coerceIn(MIN_SCREEN_BRIGHTNESS, MAX_BRIGHTNESS) }
     suspend fun setTorchStrength(value: Float) = context.dataStore.edit { it[torchStrengthKey] = value.coerceIn(0.05f, 1.0f) }
     suspend fun setDarkTheme(value: Boolean) = context.dataStore.edit { it[darkKey] = value }
@@ -205,6 +225,7 @@ data class AppState(
     val status: SessionStatus = SessionStatus.IDLE,
     val snapshot: BreathingSnapshot = BreathingEngine.snapshot(0.0, BreathingConfiguration()),
     val controlsVisible: Boolean = true,
+    val controlsGeneration: Long = 0L,
 )
 
 class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
@@ -225,7 +246,7 @@ class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
         accumulatedMs = 0
         startedAtMs = SystemClock.elapsedRealtime()
         val prefs = _state.value.prefs.copy(duration = duration)
-        _state.update { it.copy(route = "session", status = SessionStatus.RUNNING, prefs = prefs, snapshot = BreathingEngine.snapshot(0.0, configFor(prefs))) }
+        _state.update { it.copy(route = "session", status = SessionStatus.RUNNING, prefs = prefs, snapshot = BreathingEngine.snapshot(0.0, configFor(prefs)), controlsVisible = true, controlsGeneration = it.controlsGeneration + 1) }
     }
     fun tick() {
         val current = _state.value
@@ -235,9 +256,10 @@ class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
         _state.update { it.copy(snapshot = snapshot, status = if (snapshot.isComplete) SessionStatus.COMPLETE else SessionStatus.RUNNING, controlsVisible = if (snapshot.isComplete) true else it.controlsVisible) }
     }
     fun pause() { if (_state.value.status == SessionStatus.RUNNING) { accumulatedMs += SystemClock.elapsedRealtime() - startedAtMs; _state.update { it.copy(status = SessionStatus.PAUSED, controlsVisible = true) } } }
-    fun resume() { if (_state.value.status == SessionStatus.PAUSED) { startedAtMs = SystemClock.elapsedRealtime(); _state.update { it.copy(status = SessionStatus.RUNNING) } } }
+    fun resume() { if (_state.value.status == SessionStatus.PAUSED) { startedAtMs = SystemClock.elapsedRealtime(); showControls(); _state.update { it.copy(status = SessionStatus.RUNNING) } } }
     fun exitSession() { accumulatedMs = 0; _state.update { it.copy(route = "home", status = SessionStatus.IDLE, controlsVisible = true, snapshot = BreathingEngine.snapshot(0.0, configFor(it.prefs))) } }
-    fun toggleControls() = _state.update { it.copy(controlsVisible = !it.controlsVisible) }
+    fun showControls() = _state.update { it.copy(controlsVisible = true, controlsGeneration = it.controlsGeneration + 1) }
+    fun hideControls() = _state.update { it.copy(controlsVisible = false) }
     suspend fun setDuration(value: SessionDuration) = repo.setDuration(value)
     suspend fun setCueMode(value: CueMode) = repo.setCueMode(value)
     suspend fun setPulseColor(value: PulseColor) = repo.setPulseColor(value)
@@ -344,49 +366,41 @@ private class TorchController(private val cameraManager: CameraManager, private 
     val controller = remember(capability) { TorchController(context.getSystemService(CameraManager::class.java), capability) }
     ApplySessionWindowEffects(if (state.prefs.cueMode == CueMode.SCREEN) state.prefs.screenBrightness else MIN_SCREEN_BRIGHTNESS)
     LaunchedEffect(state.status) { while (state.status == SessionStatus.RUNNING) { vm.tick(); delay(33) } }
+    LaunchedEffect(state.status, state.controlsVisible, state.controlsGeneration) {
+        if (state.status == SessionStatus.RUNNING && state.controlsVisible) {
+            delay(5_000)
+            vm.hideControls()
+        }
+    }
     LaunchedEffect(state.status, state.snapshot.cueScale, state.prefs.cueMode, state.prefs.torchStrength) {
         if (state.prefs.cueMode == CueMode.TORCH && state.status == SessionStatus.RUNNING) controller.apply(state.snapshot.cueScale, state.prefs.torchStrength) else controller.off()
     }
     DisposableEffect(controller) { onDispose { controller.off() } }
-    Box(Modifier.fillMaxSize().background(Color.Black).clickable { vm.toggleControls() }.semantics { contentDescription = "SlowLight breathing session. ${state.snapshot.phase.name.lowercase()}." }, contentAlignment = Alignment.Center) {
-        if (state.prefs.cueMode == CueMode.SCREEN) ExpandingVerticalCue(state.snapshot.cueScale.toFloat(), state.prefs.pulseColor.color)
-        val labelColor = if (state.snapshot.cueScale > 0.45 && state.prefs.pulseColor != PulseColor.BLUE) Color.Black else Color.White
-        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.TopCenter).padding(top = 38.dp)) { Text(if (state.status == SessionStatus.COMPLETE) "Complete" else state.snapshot.phase.name.lowercase().replaceFirstChar { it.uppercase() }, color = labelColor, fontWeight = FontWeight.SemiBold) }
-        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.BottomCenter).padding(14.dp)) { SessionControls(state, vm, capability) }
+    Box(Modifier.fillMaxSize().background(Color.Black).clickable { vm.showControls() }.semantics { contentDescription = "SlowLight breathing session. ${state.snapshot.phase.name.lowercase()}." }, contentAlignment = Alignment.Center) {
+        if (state.prefs.cueMode == CueMode.SCREEN) ExpandingVerticalCue(state.snapshot.cueScale.toFloat(), state.prefs.pulseColor.color, state.prefs.reducedMotion)
+        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.BottomCenter).padding(14.dp)) { SessionControls(state, vm) }
     }
 }
 
-@Composable fun ExpandingVerticalCue(scale: Float, color: Color) {
-    // The light rises from the bottom edge and its intensity follows the breathing pulse.
+@Composable fun ExpandingVerticalCue(scale: Float, color: Color, reducedMotion: Boolean) {
+    val pulseAlpha = (0.10f + 0.90f * scale.coerceIn(0f, 1f))
     Box(Modifier.fillMaxSize()) {
-        val pulseAlpha = (0.10f + 0.90f * scale.coerceIn(0f, 1f))
-        Box(Modifier.fillMaxWidth().fillMaxHeight(scale.coerceIn(0f, 1f)).background(color.copy(alpha = pulseAlpha)).align(Alignment.BottomCenter))
+        if (reducedMotion) {
+            Box(Modifier.fillMaxSize().background(color.copy(alpha = pulseAlpha)))
+        } else {
+            Box(Modifier.fillMaxWidth().fillMaxHeight(scale.coerceIn(0f, 1f)).background(color.copy(alpha = pulseAlpha)).align(Alignment.BottomCenter))
+        }
     }
 }
 
-@Composable private fun SessionControls(state: AppState, vm: SessionViewModel, capability: TorchCapability?) {
-    val scope = rememberCoroutineScope()
-    Surface(color = Color.Black.copy(alpha = 0.78f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+@Composable private fun SessionControls(state: AppState, vm: SessionViewModel) {
+    Surface(color = Color.Black.copy(alpha = 0.78f), shape = RoundedCornerShape(18.dp)) {
+    Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(formatRemaining(state.snapshot.remainingSeconds), color = Color(0xFFBDBDBD))
-        Spacer(Modifier.height(12.dp))
-        if (state.prefs.cueMode == CueMode.SCREEN) {
-            Text("Maximum screen brightness: ${percent(state.prefs.screenBrightness)}", color = Color(0xFFBDBDBD))
-            Slider(value = state.prefs.screenBrightness, onValueChange = { scope.launch { vm.setScreenBrightness(it) } }, valueRange = MIN_SCREEN_BRIGHTNESS..MAX_BRIGHTNESS, modifier = Modifier.fillMaxWidth())
-            Text("Pulse color: ${state.prefs.pulseColor.label}", color = Color(0xFFBDBDBD))
-            PulseColor.entries.forEach { color -> ChoiceRow(color.label, state.prefs.pulseColor == color) { scope.launch { vm.setPulseColor(color) } } }
-        } else {
-            val variable = capability?.supportsVariableStrength == true
-            Text(if (variable) "Torch maximum: ${percent(state.prefs.torchStrength)}" else "Torch output: this phone only exposes on/off control", color = Color(0xFFBDBDBD))
-            if (variable) Slider(value = state.prefs.torchStrength, onValueChange = { scope.launch { vm.setTorchStrength(it) } }, valueRange = 0.05f..1.0f, modifier = Modifier.fillMaxWidth())
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (state.status == SessionStatus.RUNNING) OutlinedButton(onClick = vm::pause) { Text("Pause") }
-            if (state.status == SessionStatus.PAUSED) Button(onClick = vm::resume) { Text("Resume") }
-            if (state.status == SessionStatus.COMPLETE) Button(onClick = { vm.start(state.prefs.duration) }) { Text("Repeat") }
-            OutlinedButton(onClick = vm::exitSession) { Text("Exit") }
-        }
+        if (state.status == SessionStatus.RUNNING) OutlinedButton(onClick = vm::pause) { Text("Pause") }
+        if (state.status == SessionStatus.PAUSED) Button(onClick = vm::resume) { Text("Resume") }
+        if (state.status == SessionStatus.COMPLETE) Button(onClick = { vm.start(state.prefs.duration) }) { Text("Repeat") }
+        OutlinedButton(onClick = vm::exitSession) { Text("Exit") }
     }
     }
 }
@@ -435,10 +449,14 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
         Spacer(Modifier.height(18.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             DurationChooser(state.prefs.duration) { scope.launch { vm.setDuration(it) } }
-            Divider(Modifier.padding(vertical = 14.dp))
+            HorizontalDivider(Modifier.padding(vertical = 14.dp))
             Text("Light source", fontWeight = FontWeight.Medium)
             CueMode.entries.forEach { mode -> ChoiceRow(mode.label, state.prefs.cueMode == mode) { scope.launch { vm.setCueMode(mode) } } }
-            Text("Screen pulse color", fontWeight = FontWeight.Medium)
+            if (state.prefs.cueMode == CueMode.SCREEN) {
+                Text("Maximum screen brightness: ${percent(state.prefs.screenBrightness)}", fontWeight = FontWeight.Medium)
+                Slider(value = state.prefs.screenBrightness, onValueChange = { scope.launch { vm.setScreenBrightness(it) } }, valueRange = MIN_SCREEN_BRIGHTNESS..MAX_BRIGHTNESS)
+            }
+            Text("Screen pulse colour", fontWeight = FontWeight.Medium)
             PulseColor.entries.forEach { color -> ChoiceRow(color.label, state.prefs.pulseColor == color) { scope.launch { vm.setPulseColor(color) } } }
             if (state.prefs.cueMode == CueMode.TORCH) {
                 Text(when {
@@ -447,13 +465,17 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
                     else -> "This phone does not report variable rear-torch brightness. SlowLight will use the torch on/off rhythm instead."
                 }, color = MaterialTheme.colorScheme.secondary)
                 Spacer(Modifier.height(8.dp))
+                if (capability?.supportsVariableStrength == true) {
+                    Text("Maximum torch strength: ${percent(state.prefs.torchStrength)}", fontWeight = FontWeight.Medium)
+                    Slider(value = state.prefs.torchStrength, onValueChange = { scope.launch { vm.setTorchStrength(it) } }, valueRange = 0.05f..1.0f)
+                }
                 Text("Place the phone face-down with the rear torch aimed safely away from eyes. Do not use torch mode while driving, walking, or if flashes may trigger a condition.", color = MaterialTheme.colorScheme.secondary)
             }
-            Divider(Modifier.padding(vertical = 14.dp))
+            HorizontalDivider(Modifier.padding(vertical = 14.dp))
             SwitchRow("Dark app theme", state.prefs.darkTheme) { scope.launch { vm.setDarkTheme(it) } }
             SwitchRow("Reduced motion", state.prefs.reducedMotion) { scope.launch { vm.setReducedMotion(it) } }
             SwitchRow("Show setup illustration at session start", state.prefs.showSessionGuide) { scope.launch { vm.setShowSessionGuide(it) } }
-            Divider(Modifier.padding(vertical = 14.dp))
+            HorizontalDivider(Modifier.padding(vertical = 14.dp))
             Text("Safety", fontWeight = FontWeight.Medium)
             Text("Breathe gently and comfortably. Do not try to breathe as deeply as possible. Stop if you feel dizzy, breathless or unwell. This is a relaxation tool, not a medical device or treatment. Discuss persistent sleep or breathing problems with an appropriate health professional.", color = MaterialTheme.colorScheme.secondary)
             Spacer(Modifier.height(14.dp))
@@ -468,6 +490,7 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
 @Composable fun ChoiceRow(text: String, selected: Boolean, onClick: () -> Unit) { Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onClick() }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected, onClick); Text(text) } }
 @Composable fun SwitchRow(text: String, checked: Boolean, onChange: (Boolean) -> Unit) { Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) { Text(text); Switch(checked, onChange) } }
 
+@Suppress("DEPRECATION")
 @Composable fun ApplySystemBars(dark: Boolean, inSession: Boolean) {
     val activity = LocalContext.current as? Activity
     DisposableEffect(dark, inSession) {
@@ -481,6 +504,7 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
     }
 }
 
+@Suppress("DEPRECATION")
 @Composable fun ApplySessionWindowEffects(brightness: Float) {
     val activity = LocalContext.current as? Activity
     DisposableEffect(brightness) {

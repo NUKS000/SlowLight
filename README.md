@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A quiet, offline visual breathing pacer for Android.</strong><br />
-  A central line opens into light, then returns to true black as the pace gradually slows.
+  A soft light rises from the bottom of the screen, then returns to true black as the pace gradually slows.
 </p>
 
 <p align="center">
@@ -17,23 +17,36 @@
 
 ## What it does
 
-SlowLight guides paced breathing with a minimal visual cue. In screen mode, a narrow **vertical white line** at the centre of the display expands symmetrically until the screen is white, then retracts back to black. The rhythm starts at about **11 breaths/minute** and ramps linearly to **6 breaths/minute** over the first two minutes.
+SlowLight guides paced breathing with a minimal visual cue. In screen mode, a full-width illuminated area rises from the bottom of the display during inhale and falls back toward black during exhale. The rhythm starts at about **11 breaths/minute** and ramps continuously to **6 breaths/minute** over the first two minutes. The timing engine integrates the changing BPM so the cue never jumps when the pace changes.
 
 It includes:
 
 - 8- and 20-minute sessions
-- screen mode with live per-session brightness control
-- pulse-linked screen intensity with remembered white, red, green, and blue cue colors
+- screen mode with a remembered maximum brightness ceiling
+- five bedtime pulse colours, ordered **Warm red, Amber, White, Green, Blue**
+- pulse intensity linked to the breathing rhythm
+- reduced-motion mode: a stationary illuminated area with gentle opacity changes instead of changing height
 - a true `#000000` active-session background, intended to let OLED pixels turn off outside the cue
 - optional setup guidance with bedside-phone and ceiling-light illustrations
 - rear-torch mode for face-down use
 - adaptive rear-torch output: Android 13+ phones that report multiple torch levels breathe through those levels; other supported phones use an on/off rhythm
+- compact in-session controls that appear briefly at start or after a tap, then fade away after about five seconds
 - pause, resume, repeat, and automatic pause when backgrounded
-- local-only settings; no accounts, analytics, ads, or internet permission
+- local-only settings; no accounts, analytics, ads, notifications, or internet permission
 
 ## Screen mode and OLED black
 
-The active screen is black (`#000000`), immersive, and has navigation/status-bar contrast enforcement disabled where Android supports it. That lets OLED screens render the inactive area with pixels off rather than a near-black grey. LCD screens will still display their normal black level.
+The active screen is black (`#000000`), immersive, and has navigation/status-bar contrast enforcement disabled where Android supports it. The selected brightness is a maximum ceiling; the breathing cue varies its own intensity within that ceiling. OLED screens can render inactive areas with pixels off, while LCD screens display their normal black level.
+
+During a session, the default overlay contains only remaining time, Pause/Resume, and Exit. Brightness, pulse colour, reduced motion, and other choices live in Settings so the breathing screen remains quiet.
+
+## Reduced motion
+
+Reduced motion keeps the illuminated area stationary and varies its opacity with the same inhale/exhale rhythm. Normal mode retains the current bottom-anchored rising and falling light.
+
+## Setup guidance
+
+New installations show two setup illustrations before the first session: how to place the phone beside the bed with the screen facing the ceiling, and how to lie comfortably while watching the ceiling light. The guide can be disabled at the start of a session or re-enabled in Settings.
 
 ## Rear-torch mode
 
@@ -49,9 +62,9 @@ Do not use torch mode while driving or walking, and do not use a flashing light 
 
 ## Research and health boundary
 
-The pacing choice is research-informed, not a treatment claim. Slow, controlled breathing has been studied in relation to autonomic and psychological measures, while direct sleep evidence is still developing. SlowLight itself has not been clinically tested and is **not a medical device**, diagnosis, treatment, or substitute for professional care.
+The pacing choice is research-informed, not a treatment claim. SlowLight itself has not been clinically tested and is **not a medical device**, diagnosis, treatment, or substitute for professional care. Stop if you feel dizzy, breathless, or unwell.
 
-See [docs/RESEARCH.md](docs/RESEARCH.md) for the evidence summary, citations, and the exact scope of claims this project does *not* make.
+See [docs/RESEARCH.md](docs/RESEARCH.md) for the evidence summary and claim boundaries.
 
 ## Build from source
 
@@ -70,22 +83,27 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The package name is `com.nuks.slowlight`.
 
+## Release process
+
+Debug builds are for development and local testing. Release APKs are published as GitHub Release assets, not committed to the source tree. The signed release workflow runs for a `v*` tag or from **Actions → Build signed release** and requires these repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+The workflow writes the keystore only to the runner's temporary directory, builds the signed APK, generates `SHA256SUMS.txt`, and uploads both to the GitHub Release. Never commit a keystore, signing password, or local signing properties.
+
 ## Verification
 
-Version **1.3.0** was built with Gradle 8.10.2, Android SDK 35, JDK 17, and its timing unit tests. The debug APK is available under [`releases/SlowLight-v1.3.0-debug.apk`](releases/SlowLight-v1.3.0-debug.apk) and has SHA-256 `27c7209ab3271c1dac4f2f16fac72214b5c2a0a27bc2a6c2426629e9fc119f70`. It was initially tested on a Samsung Galaxy S24 Ultra; torch capability remains device-specific.
+The current main branch is version **1.4.0**. The continuous timing engine, reduced-motion behavior, settings persistence, and session timing are covered by local JUnit tests. Physical OLED/LCD appearance, device-specific torch strength, camera-permission denial/revocation, and signed release installation still require device validation.
 
 ## Privacy
 
-SlowLight stores its session settings locally through Android DataStore. It has no internet permission, no account system, no analytics SDK, no advertising, and no cloud service. Camera permission is requested only if you choose rear-torch mode.
-
-## Contributing
-
-Contributions are welcome when they preserve the app's offline-first, low-distraction design. Read [CONTRIBUTING.md](CONTRIBUTING.md), [docs/PROJECT-NOTES.md](docs/PROJECT-NOTES.md), and [SECURITY.md](SECURITY.md) first.
+SlowLight stores only its settings on this phone through Android DataStore. It has no internet permission, account system, analytics SDK, advertising, notifications, or cloud service. Camera permission is requested only if you choose rear-torch mode.
 
 ## Licence
 
 SlowLight is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-You may use, study, modify, and redistribute SlowLight for permitted non-commercial purposes. **Commercial use is not permitted without a separate written licence from Josh Bohan.** This includes selling the app, charging for access to it, incorporating it into a paid product or service, or otherwise using it with an anticipated commercial application.
-
-If you want to use SlowLight commercially, contact the copyright holder to discuss a separate commercial licence.
+You may use, study, modify, and redistribute SlowLight for permitted non-commercial purposes. **Commercial use is not permitted without a separate written licence from Josh Bohan.** The required notice is preserved in [LICENSE](LICENSE).
