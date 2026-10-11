@@ -40,6 +40,10 @@ The active screen is black (`#000000`), immersive, and has navigation/status-bar
 
 During a session, the default overlay contains only remaining time, Pause/Resume, and Exit. Brightness, pulse colour, reduced motion, and other choices live in Settings so the breathing screen remains quiet.
 
+## Automatic darkness at the end of a session
+
+When the selected 8- or 20-minute session finishes, SlowLight immediately removes the animated cue and controls, switches off the rear torch if selected, sets the app's screen brightness to minimum, and releases Android's `FLAG_KEEP_SCREEN_ON`. The display stays fully black until the phone sleeps according to its system screen-timeout setting. Android does not allow a normal app to force an immediate screen lock without special device-administrator privileges. Tap the dark screen to return to SlowLight's home page.
+
 ## Reduced motion
 
 Reduced motion keeps the illuminated area stationary and varies its opacity with the same inhale/exhale rhythm. Normal mode retains the current bottom-anchored rising and falling light.
@@ -94,9 +98,11 @@ Debug builds are for development and local testing. Release APKs are published a
 
 The workflow writes the keystore only to the runner's temporary directory, builds the signed APK, generates `SHA256SUMS.txt`, and uploads both to the GitHub Release. Never commit a keystore, signing password, or local signing properties.
 
+A separate `Build SlowLight test APK` workflow builds and unit-tests a **debug** APK on each push to `main`. For version 1.4.1 it publishes a clearly labelled prerelease `v1.4.1-debug` with the APK and SHA-256 checksum. Debug APKs are test installations, not production releases. If a previous install was signed with a different debug key, Android may require uninstalling it before installing this test version (which removes locally saved preferences).
+
 ## Verification
 
-The current main branch is version **1.4.0**. The continuous timing engine, reduced-motion behavior, settings persistence, and session timing are covered by local JUnit tests. Physical OLED/LCD appearance, device-specific torch strength, camera-permission denial/revocation, and signed release installation still require device validation.
+The current main branch is version **1.4.1**. The continuous timing engine, reduced-motion behavior, settings persistence, and session timing are covered by local JUnit tests. Physical OLED/LCD appearance, device-specific torch strength, camera-permission denial/revocation, and signed release installation still require device validation.
 
 ## Privacy
 

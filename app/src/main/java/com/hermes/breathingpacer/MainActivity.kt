@@ -228,6 +228,24 @@ data class AppState(
     val controlsGeneration: Long = 0L,
 )
 
+// Completing a session must produce a truly black frame and release Android's wake flag.
+internal data class SessionDisplayPolicy(
+    val showCue: Boolean,
+    val showControls: Boolean,
+    val keepScreenOn: Boolean,
+    val brightness: Float,
+)
+
+internal fun sessionDisplayPolicy(status: SessionStatus, controlsVisible: Boolean, requestedBrightness: Float): SessionDisplayPolicy {
+    val complete = status == SessionStatus.COMPLETE
+    return SessionDisplayPolicy(
+        showCue = !complete,
+        showControls = !complete && controlsVisible,
+        keepScreenOn = !complete,
+        brightness = if (complete) 0f else requestedBrightness,
+    )
+}
+
 class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state
@@ -253,7 +271,7 @@ class SessionViewModel(private val repo: PreferencesRepository) : ViewModel() {
         if (current.status != SessionStatus.RUNNING) return
         val elapsed = accumulatedMs + (SystemClock.elapsedRealtime() - startedAtMs)
         val snapshot = BreathingEngine.snapshot(elapsed / 1000.0, configFor(current.prefs))
-        _state.update { it.copy(snapshot = snapshot, status = if (snapshot.isComplete) SessionStatus.COMPLETE else SessionStatus.RUNNING, controlsVisible = if (snapshot.isComplete) true else it.controlsVisible) }
+        _state.update { it.copy(snapshot = snapshot, status = if (snapshot.isComplete) SessionStatus.COMPLETE else SessionStatus.RUNNING, controlsVisible = if (snapshot.isComplete) false else it.controlsVisible) }
     }
     fun pause() { if (_state.value.status == SessionStatus.RUNNING) { accumulatedMs += SystemClock.elapsedRealtime() - startedAtMs; _state.update { it.copy(status = SessionStatus.PAUSED, controlsVisible = true) } } }
     fun resume() { if (_state.value.status == SessionStatus.PAUSED) { startedAtMs = SystemClock.elapsedRealtime(); showControls(); _state.update { it.copy(status = SessionStatus.RUNNING) } } }
@@ -364,7 +382,12 @@ private class TorchController(private val cameraManager: CameraManager, private 
     val context = LocalContext.current
     val capability = remember { TorchController.discover(context) }
     val controller = remember(capability) { TorchController(context.getSystemService(CameraManager::class.java), capability) }
-    ApplySessionWindowEffects(if (state.prefs.cueMode == CueMode.SCREEN) state.prefs.screenBrightness else MIN_SCREEN_BRIGHTNESS)
+    val display = sessionDisplayPolicy(
+        state.status,
+        state.controlsVisible,
+        if (state.prefs.cueMode == CueMode.SCREEN) state.prefs.screenBrightness else MIN_SCREEN_BRIGHTNESS,
+    )
+    ApplySessionWindowEffects(display.brightness, display.keepScreenOn)
     LaunchedEffect(state.status) { while (state.status == SessionStatus.RUNNING) { vm.tick(); delay(33) } }
     LaunchedEffect(state.status, state.controlsVisible, state.controlsGeneration) {
         if (state.status == SessionStatus.RUNNING && state.controlsVisible) {
@@ -376,9 +399,25 @@ private class TorchController(private val cameraManager: CameraManager, private 
         if (state.prefs.cueMode == CueMode.TORCH && state.status == SessionStatus.RUNNING) controller.apply(state.snapshot.cueScale, state.prefs.torchStrength) else controller.off()
     }
     DisposableEffect(controller) { onDispose { controller.off() } }
-    Box(Modifier.fillMaxSize().background(Color.Black).clickable { vm.showControls() }.semantics { contentDescription = "SlowLight breathing session. ${state.snapshot.phase.name.lowercase()}." }, contentAlignment = Alignment.Center) {
-        if (state.prefs.cueMode == CueMode.SCREEN) ExpandingVerticalCue(state.snapshot.cueScale.toFloat(), state.prefs.pulseColor.color, state.prefs.reducedMotion)
-        AnimatedVisibility(state.controlsVisible, Modifier.align(Alignment.BottomCenter).padding(14.dp)) { SessionControls(state, vm) }
+    Box(
+        Modifier.fillMaxSize().background(Color.Black)
+            .clickable { if (state.status == SessionStatus.COMPLETE) vm.exitSession() else vm.showControls() }
+            .semantics {
+                contentDescription = if (state.status == SessionStatus.COMPLETE)
+                    "Session complete. Screen dark. Tap to return home."
+                else "SlowLight breathing session. ${state.snapshot.phase.name.lowercase()}."
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        // Do not animate controls out after completion: remove all illuminated content immediately.
+        if (display.showCue) {
+            if (state.prefs.cueMode == CueMode.SCREEN) {
+                ExpandingVerticalCue(state.snapshot.cueScale.toFloat(), state.prefs.pulseColor.color, state.prefs.reducedMotion)
+            }
+            AnimatedVisibility(display.showControls, Modifier.align(Alignment.BottomCenter).padding(14.dp)) {
+                SessionControls(state, vm)
+            }
+        }
     }
 }
 
@@ -505,17 +544,25 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
 }
 
 @Suppress("DEPRECATION")
-@Composable fun ApplySessionWindowEffects(brightness: Float) {
+@Composable fun ApplySessionWindowEffects(brightness: Float, keepScreenOn: Boolean) {
     val activity = LocalContext.current as? Activity
-    DisposableEffect(brightness) {
+    DisposableEffect(brightness, keepScreenOn) {
         val window = activity?.window
         val oldBrightness = window?.attributes?.screenBrightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
         val oldUi = window?.decorView?.systemUiVisibility ?: 0
         val oldFlags = window?.attributes?.flags ?: 0
-        window?.attributes = window?.attributes?.apply { screenBrightness = brightness.coerceIn(0.01f, 1.0f) }
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // At completion 0f requests minimum brightness and Android can honour its normal timeout.
+        window?.attributes = window?.attributes?.apply { screenBrightness = brightness.coerceIn(0f, 1.0f) }
+        if (keepScreenOn) window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window?.decorView?.systemUiVisibility = oldUi or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        onDispose { window?.attributes = window?.attributes?.apply { screenBrightness = oldBrightness }; if (oldFlags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON == 0) window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); window?.decorView?.systemUiVisibility = oldUi }
+        onDispose {
+            window?.attributes = window?.attributes?.apply { screenBrightness = oldBrightness }
+            if (oldFlags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON == 0)
+                window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            window?.decorView?.systemUiVisibility = oldUi
+        }
     }
 }
 

@@ -86,6 +86,25 @@ class BreathingEngineTest {
         assertEquals(PulseColor.WARM_RED, PulseColor.fromStored(99))
     }
 
+    @Test fun completedSessionGoesFullyDarkAndAllowsAndroidToSleep() {
+        val display = sessionDisplayPolicy(SessionStatus.COMPLETE, controlsVisible = true, requestedBrightness = 0.8f)
+        assertFalse(display.showCue)
+        assertFalse(display.showControls)
+        assertFalse(display.keepScreenOn)
+        assertEquals(0f, display.brightness, 0f)
+    }
+
+    @Test fun runningAndPausedSessionsRetainTheirNormalDisplay() {
+        for (status in listOf(SessionStatus.RUNNING, SessionStatus.PAUSED)) {
+            val display = sessionDisplayPolicy(status, controlsVisible = true, requestedBrightness = 0.5f)
+            assertTrue(display.showCue)
+            assertTrue(display.showControls)
+            assertTrue(display.keepScreenOn)
+            assertEquals(0.5f, display.brightness, 0f)
+        }
+        assertFalse(sessionDisplayPolicy(SessionStatus.RUNNING, controlsVisible = false, requestedBrightness = 0.5f).showControls)
+    }
+
     @Test fun pauseResumeTimingModelCanUseAccumulatedElapsedTime() {
         val beforePause = 42.0
         val afterResumeActiveOnly = beforePause + 8.0

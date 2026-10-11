@@ -7,7 +7,7 @@ plugins {
 val releaseStoreFile = providers.gradleProperty("RELEASE_STORE_FILE").orNull
 
 android { namespace = "com.nuks.slowlight"; compileSdk = 35
-    defaultConfig { applicationId = "com.nuks.slowlight"; minSdk = 26; targetSdk = 35; versionCode = 5; versionName = "1.4.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "com.nuks.slowlight"; minSdk = 26; targetSdk = 35; versionCode = 6; versionName = "1.4.1"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     signingConfigs {
         create("release") {
             if (releaseStoreFile != null) {
