@@ -336,7 +336,7 @@ private class TorchController(private val cameraManager: CameraManager, private 
     ApplySystemBars(dark, state.route == "session")
     MaterialTheme(colorScheme = if (dark) darkScheme() else lightScheme()) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            when (state.route) { "settings" -> SettingsScreen(state, vm); "intro" -> SessionIntroScreen(state, vm); "session" -> SessionScreen(state, vm); else -> HomeScreen(state, vm) }
+            when (state.route) { "science" -> ScienceScreen(vm); "settings" -> SettingsScreen(state, vm); "intro" -> SessionIntroScreen(state, vm); "session" -> SessionScreen(state, vm); else -> HomeScreen(state, vm) }
         }
     }
 }
@@ -361,6 +361,7 @@ private class TorchController(private val cameraManager: CameraManager, private 
             Text("SlowLight", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(10.dp))
             Text("A quiet visual rhythm that rises from the foot of the screen to guide pre-sleep breathing.", color = MaterialTheme.colorScheme.secondary)
+            OutlinedButton(onClick = { vm.show("science") }) { Text("Why this pace?") }
             Spacer(Modifier.height(28.dp))
             DurationChooser(state.prefs.duration) { scope.launch { vm.setDuration(it) } }
             Spacer(Modifier.height(18.dp))
@@ -377,6 +378,30 @@ private class TorchController(private val cameraManager: CameraManager, private 
 
 @Composable fun DurationChooser(selected: SessionDuration, onSelect: (SessionDuration) -> Unit) {
     Column { Text("Session length", fontWeight = FontWeight.Medium); SessionDuration.entries.forEach { duration -> Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onSelect(duration) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) { RadioButton(selected == duration, onClick = { onSelect(duration) }); Text("${duration.minutes} minutes") } } }
+}
+
+@Composable fun ScienceScreen(vm: SessionViewModel) {
+    val uriHandler = LocalUriHandler.current
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Why this pace?", style = MaterialTheme.typography.headlineMedium)
+        Text("A quiet rhythm, informed by slow-breathing research.", color = MaterialTheme.colorScheme.secondary)
+        Text("SlowLight gradually moves from 11 to 6 breaths per minute over two minutes. At the final pace, each breath is 10 seconds: about 4 seconds in and 6 seconds out, with no breath hold.")
+        Text("Why six breaths per minute?", style = MaterialTheme.typography.titleMedium)
+        Text("This is a commonly studied slow-breathing rate. Breathing and heart rate naturally interact; slower breathing can strengthen these rhythmic changes. Studies report changes in heart-rate variability and, in some people, feelings of relaxation. These measurements do not prove that an app treats a health condition.")
+        Text("What is a design choice?", style = MaterialTheme.typography.titleMedium)
+        Text("The gradual start is intended to make the pace easier to approach. The longer exhale gives an unhurried rhythm, but research has not established that it reduces stress more than equal inhale and exhale timing. The two-minute ramp, 8- and 20-minute sessions, colours and light cue have not been validated together in a clinical trial of SlowLight.")
+        Text("What about sleep?", style = MaterialTheme.typography.titleMedium)
+        Text("Some small studies suggest that practising slow breathing before bed may improve sleep quality. Results are mixed: a larger trial found no extra mental-health or wellbeing benefit from very slow breathing compared with ordinary paced breathing. SlowLight offers a wind-down routine, not a proven treatment for insomnia or anxiety.")
+        Text("Follow comfortably", style = MaterialTheme.typography.titleMedium)
+        Text("The light is a guide, not a target you must reach. Breathe gently without forcing deep breaths or holding your breath. Return to normal breathing and stop if you feel dizzy, breathless or uncomfortable.")
+        Text("Explore the research", style = MaterialTheme.typography.titleMedium)
+        Text("These papers study breathing techniques, not SlowLight. Links open in your browser.")
+        OutlinedButton(onClick = { uriHandler.openUri("https://pubmed.ncbi.nlm.nih.gov/30245619/") }, modifier = Modifier.fillMaxWidth()) { Text("Slow breathing: 2018 research review") }
+        OutlinedButton(onClick = { uriHandler.openUri("https://pubmed.ncbi.nlm.nih.gov/36871835/") }, modifier = Modifier.fillMaxWidth()) { Text("Longer exhale: 2023 randomised trial") }
+        OutlinedButton(onClick = { uriHandler.openUri("https://pmc.ncbi.nlm.nih.gov/articles/PMC6406675/") }, modifier = Modifier.fillMaxWidth()) { Text("Bedtime breathing: 2019 study") }
+        OutlinedButton(onClick = { uriHandler.openUri("https://pubmed.ncbi.nlm.nih.gov/38092805/") }, modifier = Modifier.fillMaxWidth()) { Text("Evidence limits: 2023 trial of 400 adults") }
+        Button(onClick = { vm.show("home") }, modifier = Modifier.fillMaxWidth()) { Text("Back to SlowLight") }
+    }
 }
 
 @Composable fun SessionScreen(state: AppState, vm: SessionViewModel) {
