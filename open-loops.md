@@ -10,8 +10,9 @@ Updated: 2026-10-12 (NZDT)
 - [x] Bumped version to 1.4.1 and added a CI build workflow that publishes a labelled debug APK prerelease.
 
 ## Needs verification / follow-up
-- [ ] Check GitHub Actions **Build SlowLight test APK** succeeds (unit tests and Android build).
-- [ ] Confirm prerelease `v1.4.1-debug` offers a downloadable APK and checksum, and install on a physical Android phone.
+- [x] GitHub Actions **Build SlowLight test APK** run 38137101346 succeeded on 2026-10-12 NZDT, including `testDebugUnitTest assembleDebug`.
+- [x] Prerelease `v1.4.1-debug` contains a downloadable APK and SHA-256 checksum: https://github.com/NUKS000/SlowLight/releases/tag/v1.4.1-debug
+- [ ] Install the APK on a physical Android phone; assess whether an existing installation has a different debug signing key.
 - [ ] Check end-of-session screen is immediately black and the device subsequently sleeps after the configured screen timeout on an S24 Ultra; check both screen and torch modes and dark-screen tap-to-return.
 - [ ] For a production update, produce and test a signed release with the existing production keystore, instead of distributing a debug-signed APK.
 - [ ] If replacing another debug-signing key, note uninstalling the old APK may be required and local settings may be lost.
