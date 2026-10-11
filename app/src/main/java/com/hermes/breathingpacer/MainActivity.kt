@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -482,6 +483,7 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
 @Composable fun SettingsScreen(state: AppState, vm: SessionViewModel) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val capability = remember(context) { TorchController.discover(context) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 20.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
@@ -520,6 +522,7 @@ fun SetupIllustration(phoneBesideBed: Boolean) {
             Spacer(Modifier.height(14.dp))
             Text("Privacy", fontWeight = FontWeight.Medium)
             Text("SlowLight stores only its settings on this phone. It has no accounts, analytics, advertisements, internet permission or cloud service.", color = MaterialTheme.colorScheme.secondary)
+            OutlinedButton(onClick = { uriHandler.openUri("https://github.com/NUKS000/SlowLight/blob/main/PRIVACY.md") }) { Text("Privacy policy") }
             Spacer(Modifier.height(18.dp))
         }
         Button(onClick = { vm.show("home") }, modifier = Modifier.fillMaxWidth()) { Text("Done") }
