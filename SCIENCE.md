@@ -32,14 +32,27 @@ SlowLight's 11-to-6 breaths-per-minute transition over two minutes, its 8- and 2
 
 Use the light as an optional guide. Breathe gently, without forcing unusually deep breaths or holding your breath. Stop and return to normal breathing if you feel dizzy, breathless or uncomfortable. SlowLight supports general relaxation; it is not a medical device or treatment for insomnia or anxiety.
 
-## Suggested marketing
+## Check the evidence in detail
 
-**A quiet light rhythm for winding down, informed by slow-breathing research.**
+| Paper | Design and comparison | Main finding | Relevance to SlowLight |
+| --- | --- | --- | --- |
+| [Zaccaro et al., 2018](https://pubmed.ncbi.nlm.nih.gov/30245619/) | Systematic review; 15 eligible studies of slow breathing | Physiological changes and associations with relaxation; methods and study quality varied | Supports the broad rationale, not the exact app programme |
+| [Birdee et al., 2023](https://pubmed.ncbi.nlm.nih.gov/36871835/) | Randomised trial; 100 healthy adults; longer versus equal exhale timing over 12 weeks | Both groups improved; no statistically significant difference between ratios | Does not establish that SlowLight's 4:6 ratio is superior |
+| [Laborde et al., 2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6406675/) | 64 young healthy adults; evening breathing for 15 minutes over 30 days versus social media | Better self-reported sleep quality in the breathing group | Encouraging for bedtime practice, with a comparison that cannot isolate the breathing effect |
+| [Fincham et al., 2023](https://pubmed.ncbi.nlm.nih.gov/38092805/) | Randomised trial; 400 adults; roughly 5.5 versus 12 breaths per minute, about 10 minutes daily for four weeks | Very slow breathing did not outperform ordinary paced breathing on mental health and wellbeing | Limits claims that a particular slow rate provides a special or guaranteed benefit |
 
-Longer description: “SlowLight gently guides you towards six breaths per minute, a commonly studied slow-breathing pace. Explore the reasoning and research from the home screen, then follow at a pace that feels comfortable.”
+These are independent publications about breathing practices. The authors and institutions do not endorse SlowLight.
 
-Use “research-informed pacing”. Avoid “clinically proven app”, “vagus nerve reset”, “guaranteed sleep”, claims that longer exhalation is superior, or claims that the light itself has a therapeutic effect.
+## What has been verified in the app?
 
-## How to build stronger evidence
+The pacing code specifies a starting rate of 11 breaths per minute, a linear reduction to 6 over 120 seconds, and an inhale/exhale split of 40%/60%. After the ramp, that gives a ten-second cycle with four seconds inhaling and six exhaling. Automated unit tests cover the breathing engine and associated behaviour.
 
-During the closed test, ask whether the pace feels comfortable, whether the cue is easy to follow, and whether users feel more settled afterwards. Ask about discomfort too. Treat this as usability feedback, not clinical proof. Substantiating efficacy would require an adequately designed comparison study with defined outcomes; proving the exact ramp or ratio is best would require comparing those choices directly.
+This is software verification: it checks the intended timing logic. It does not measure a user's actual breathing, demonstrate a health outcome, or validate the phone display or torch as a clinical intervention. SlowLight provides no physiological feedback and does not personalise a resonance frequency.
+
+## What would stronger validation require?
+
+A clinical study would need a defined population, appropriate comparison, prespecified outcomes and sufficient participants. Demonstrating that this app improves sleep is a different question from showing that a user finds it pleasant or easy to use. Establishing that a two-minute ramp or a 4:6 ratio is best would require directly comparing those choices.
+
+Our current claim is deliberately narrower: SlowLight makes a research-informed breathing rhythm convenient to follow as part of a relaxation routine.
+
+Evidence summary reviewed: 12 October 2026. This is a focused selection of relevant research, not an exhaustive systematic review.
