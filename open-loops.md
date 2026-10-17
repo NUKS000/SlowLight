@@ -14,7 +14,9 @@ Updated: 2026-10-17 (NZDT)
 - [x] Android application ID confirmed as `com.nuks.slowlight`, latest source 1.4.1, versionCode 6.
 - [x] GitHub prerelease `v1.4.1-debug` has a downloadable test APK at https://github.com/NUKS000/SlowLight/releases/tag/v1.4.1-debug (not production-signed).
 - [ ] **BLOCKER: confirm Play Console > Test and release > Production shows an active released app, rollout status, and countries/regions.** Current connector can read the open Store listings tab but cannot navigate to Production or obtain authenticated release state.
-- [ ] Independently open https://play.google.com/store/apps/details?id=com.nuks.slowlight on a non-tester Android account and confirm the Install button is displayed and installation succeeds. Public web retrieval cannot verify the page from this environment.
+- [x] 17 Oct: Owner opened Google Play Store listing while signed into a Google account associated with SlowLight and saw **Install**; this confirms that account can install but is **NOT evidence of public production availability**.
+- [ ] Owner believes Play Store distribution is currently limited to enrolled testers. Check Play Console Dashboard / Production and **Closed testing** for production-access eligibility, 12 testers opted in continuously for 14 days, and whether the approval/application remains outstanding. Google requires an explicit Apply for production submission after qualifying test.
+- [ ] Verify public availability via an Android account **not** enrolled in testing using https://play.google.com/store/apps/details?id=com.nuks.slowlight and confirm successful installation and launch.
 - [ ] If production is unavailable, inspect Dashboard for required app setup / access; new personal accounts may require a closed test with at least 12 opted-in testers for 14 continuous days, then application for production access. Use internal-test opt-in link or debug prerelease for limited testers in the meantime.
 - [ ] Record the final verified public install URL and production release/version in README once confirmed. Do not claim Play Store public availability solely from listing state.
 
