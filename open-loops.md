@@ -1,6 +1,6 @@
 # Open loops — SlowLight
 
-Updated: 2026-10-12 (NZDT)
+Updated: 2026-10-17 (NZDT)
 
 ## Completed in source
 - [x] Session completion sets controls invisible, removes the light cue immediately, and gives a true-black screen; tapping that screen intentionally returns home.
@@ -8,6 +8,15 @@ Updated: 2026-10-12 (NZDT)
 - [x] Screen window effects set brightness to 0 and release `FLAG_KEEP_SCREEN_ON` upon completion; Android may then put the phone to sleep after its configured display timeout.
 - [x] Added regression tests for completed vs running/paused display policy.
 - [x] Bumped version to 1.4.1 and added a CI build workflow that publishes a labelled debug APK prerelease.
+
+## Google Play distribution readiness (17 October 2026)
+- [x] Connected Play Console Store listings page shows default listing **Live** (last updated 11 October 2026); notification says an app update was published on 14 October 2026. These signals do **not** independently confirm a production release is publicly installable.
+- [x] Android application ID confirmed as `com.nuks.slowlight`, latest source 1.4.1, versionCode 6.
+- [x] GitHub prerelease `v1.4.1-debug` has a downloadable test APK at https://github.com/NUKS000/SlowLight/releases/tag/v1.4.1-debug (not production-signed).
+- [ ] **BLOCKER: confirm Play Console > Test and release > Production shows an active released app, rollout status, and countries/regions.** Current connector can read the open Store listings tab but cannot navigate to Production or obtain authenticated release state.
+- [ ] Independently open https://play.google.com/store/apps/details?id=com.nuks.slowlight on a non-tester Android account and confirm the Install button is displayed and installation succeeds. Public web retrieval cannot verify the page from this environment.
+- [ ] If production is unavailable, inspect Dashboard for required app setup / access; new personal accounts may require a closed test with at least 12 opted-in testers for 14 continuous days, then application for production access. Use internal-test opt-in link or debug prerelease for limited testers in the meantime.
+- [ ] Record the final verified public install URL and production release/version in README once confirmed. Do not claim Play Store public availability solely from listing state.
 
 ## Needs verification / follow-up
 - [x] GitHub Actions **Build SlowLight test APK** run 38137101346 succeeded on 2026-10-12 NZDT, including `testDebugUnitTest assembleDebug`.
