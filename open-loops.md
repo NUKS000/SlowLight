@@ -1,6 +1,6 @@
 # Open loops — SlowLight
 
-Updated: 2026-10-17 (NZDT)
+Updated: 2026-10-19 (NZDT)
 
 ## Completed in source
 - [x] Session completion sets controls invisible, removes the light cue immediately, and gives a true-black screen; tapping that screen intentionally returns home.
@@ -30,3 +30,9 @@ Updated: 2026-10-17 (NZDT)
 
 ## Context
 The fix intentionally does **not** request device-administrator privileges or force-lock the device. Ordinary apps cannot reliably sleep/lock the screen instantly; clearing `FLAG_KEEP_SCREEN_ON` is the appropriate least-privilege behaviour. The user asked for the phone to go dark automatically without leaving settings visible.
+
+## Play Console closed-test release blocker (19 October 2026)
+- [ ] **Screenshot: Create closed testing release > Preview and confirm shows 2 errors:** "You can't rollout this release because it doesn't allow any existing users to upgrade to the newly added app bundles" and "This release does not add or remove any app bundles." The "New app bundles" section is empty and Save is disabled. No rollout has been confirmed.
+- [ ] Inspect Play Console > Test and release > Latest releases and bundles for the highest existing versionCode and the active track signing/distribution settings. Do not assume current source versionCode 6 is eligible until compared with Play's highest uploaded code.
+- [ ] Prepare a proper Play upload .aab using the required signing identity (or Play App Signing upload key); currently documented GitHub release workflow publishes APKs, while GitHub debug prerelease APK is unsuitable for Play submission. Preserve applicationId com.nuks.slowlight.
+- [ ] Set Android versionCode **higher** than any uploaded Play bundle (currently source app/build.gradle.kts says 6), build and validate a signed app bundle, then return to Closed testing > Create release, upload the .aab and confirm the upgrade-path errors are cleared before rollout.
